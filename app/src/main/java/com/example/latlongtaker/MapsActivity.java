@@ -6,10 +6,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
 import android.content.ClipData;
 import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
@@ -58,10 +61,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     LocationManager locationManager;
     View contentView;
 
+    BroadcastReceiver gpsBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "intent.getAction()="+intent.getAction());
+            if (intent.getAction().matches(LocationManager.PROVIDERS_CHANGED_ACTION)) {
+                Log.d(TAG, "getLocation------------");
+                getLocation();
+            }
+        }
+    };
+
     @Override
     protected void onResume() {
         super.onResume();
-        checkGps();
+
+        registerReceiver(gpsBroadcastReceiver, new IntentFilter(LocationManager.PROVIDERS_CHANGED_ACTION));
     }
 
     @Override
@@ -86,7 +101,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 super.onLocationResult(locationResult);
 
                 latLong = new LatLng(locationResult.getLastLocation().getLatitude(), locationResult.getLastLocation().getLongitude());
-                mapFragment.getMapAsync(MapsActivity.this);
+//                mapFragment.getMapAsync(MapsActivity.this);
 //                Toast.makeText(MapsActivity.this, "Updated location.", Toast.LENGTH_SHORT).show();
 //                showLocation(locationResult.getLastLocation());
             }
@@ -110,6 +125,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        dialogInterface.dismiss();
                     }
                 })
                 .setNegativeButton("Close", new DialogInterface.OnClickListener() {
@@ -137,6 +153,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void getLocation() {
+
+        checkGps();
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -334,5 +352,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION_PERMISSION);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(gpsBroadcastReceiver);
     }
 }
